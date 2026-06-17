@@ -289,7 +289,7 @@ class NewspaperDownloader:
                     append_images=rgb_pages[1:],
                     duration=100,
                     loop=0,
-                    quality=95,
+                    quality=55,
                     optimize=False
                 )
                 
