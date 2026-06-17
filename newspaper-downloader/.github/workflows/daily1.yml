@@ -1,0 +1,78 @@
+name: Daily Gujarat Samachar Download
+
+on:
+  schedule:
+    # Runs daily at 5:00 AM IST (11:30 PM UTC previous day)
+    - cron: '30 23 * * *'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  download-and-upload:
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python 3.11
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.11'
+
+      - name: Cache pip dependencies
+        uses: actions/cache@v3
+        with:
+          path: ~/.cache/pip
+          key: ${{ runner.os }}-pip-${{ hashFiles('**/requirements.txt') }}
+          restore-keys: |
+            ${{ runner.os }}-pip-
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r newspaper-downloader/requirements.txt
+          # Install playwright browsers
+          playwright install chromium
+
+      - name: Download and Process Newspaper
+        env:
+          BOT_TOKEN: ${{ secrets.BOT_TOKEN }}
+          CHANNEL_USERNAME: ${{ secrets.CHANNEL_USERNAME }}
+          TZ: Asia/Kolkata
+        run: |
+          cd newspaper-downloader
+          python main.py
+
+      - name: Upload logs on failure
+        if: failure()
+        uses: actions/upload-artifact@v3
+        with:
+          name: error-logs
+          path: |
+            newspaper-downloader/*.log
+            newspaper-downloader/error_*.txt
+          retention-days: 7
+
+      - name: Send failure notification
+        if: failure()
+        env:
+          BOT_TOKEN: ${{ secrets.BOT_TOKEN }}
+          CHANNEL_USERNAME: ${{ secrets.CHANNEL_USERNAME }}
+        run: |
+          cd newspaper-downloader
+          python -c "
+          import sys
+          sys.path.insert(0, '.')
+          from main import send_telegram_message
+          try:
+              send_telegram_message(
+                  '❌ ગુજરાત સમાચાર ડાઉનલોડ નિષ્ફળ\\n\\n⚠️ કૃપયા લૉગ્સ તપાસો',
+                  '\${{ secrets.BOT_TOKEN }}',
+                  '\${{ secrets.CHANNEL_USERNAME }}'
+              )
+          except Exception as e:
+              print(f'Failed to send error notification: {e}')
+          "
