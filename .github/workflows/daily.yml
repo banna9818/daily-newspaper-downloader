@@ -10,7 +10,7 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Checkout Repository
+      - name: Checkout
         uses: actions/checkout@v4
 
       - name: Setup Python
@@ -23,13 +23,17 @@ jobs:
           python -m pip install --upgrade pip
           pip install -r requirements.txt
 
+      - name: Install Playwright Browser
+        run: |
+          python -m playwright install chromium
+
       - name: Run Script
         env:
           BOT_TOKEN: ${{ secrets.BOT_TOKEN }}
           CHANNEL_USERNAME: ${{ secrets.CHANNEL_USERNAME }}
         run: python main.py
 
-      - name: Upload PDF Artifact
+      - name: Upload PDF
         uses: actions/upload-artifact@v4
         with:
           name: newspaper-pdf
